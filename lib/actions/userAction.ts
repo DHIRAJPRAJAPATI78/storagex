@@ -7,13 +7,14 @@ import { parseStringify } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { avatarPlaceholderUrl } from "@/constants";
 import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs"
 const getUserByEmail = async (email: string) => {
   const { databases } = await createAdminClient();
 
   const result = await databases.listDocuments(
     appwriteConfig.databaseId,
     appwriteConfig.usersCollectionId,
-    [Query.equal("email", [email])],
+    [Query.equal("email", [email])]
   );
 
   return result.total > 0 ? result.documents[0] : null;
@@ -60,7 +61,8 @@ export const createAccount = async ({
         email,
         avatar: avatarPlaceholderUrl,
         accountId,
-      },
+        password: ""
+      }
     );
   }
 
@@ -78,7 +80,7 @@ export const verifySecret = async ({
     const { account } = await createAdminClient();
 
     const session = await account.createSession(accountId, password);
-   console.log(session);
+    console.log(session);
     (await cookies()).set("appwrite-session", session.secret, {
       path: "/",
       httpOnly: true,
@@ -97,14 +99,14 @@ export const getCurrentUser = async () => {
     const { databases, account } = await createSessionClient();
 
     const result = await account.get();
-    console.log(result);
+
     const user = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
-      [Query.equal("accountId", result.$id)],
+      [Query.equal("accountId", result.$id)]
     );
 
-    console.log(user);
+    // console.log(user);
     if (user.total <= 0) return null;
     return parseStringify(user.documents[0]);
   } catch (error) {
@@ -139,4 +141,51 @@ export const signInUser = async ({ email }: { email: string }) => {
   } catch (error) {
     handleError(error, "Failed to sign in user");
   }
+};
+
+export const updateUser = async ({
+  password,
+  confirmPassword,
+}: {
+  password?: string;
+  confirmPassword?: string;
+}) => {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("Unauthorized or user not found");
+
+    if (!password || !confirmPassword) {
+      throw new Error("Both password and confirm password are required");
+    }
+
+    if (password !== confirmPassword) {
+      throw new Error("Passwords do not match");
+    }
+
+    // ✅ Securely hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const { databases } = await createAdminClient();
+
+    const updatedUser = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.usersCollectionId,
+      currentUser.$id,
+      {
+        password: hashedPassword,
+      }
+    );
+
+    return parseStringify(updatedUser);
+  } catch (error) {   
+    throw new Error("Failed to update user");
+  }
+};
+
+export const validatePassword = async (inputPassword: string) => {
+  const user = await getCurrentUser();
+  if (!user?.password) throw new Error("No password set.");
+
+  const isMatch = await bcrypt.compare(inputPassword, user.password);
+  return isMatch;
 };

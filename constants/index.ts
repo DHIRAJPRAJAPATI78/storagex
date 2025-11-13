@@ -24,6 +24,11 @@ export const navItems = [
     icon: "/assets/icons/others.svg",
     url: "/others",
   },
+   {
+    name: "Private-folder",
+    icon: "/assets/icons/others.svg",
+    url: "/private-space",
+  },
 ];
 
 export const actionsDropdownItems = [

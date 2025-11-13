@@ -4,7 +4,7 @@ import React, { useCallback, useState } from "react";
 
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { cn, convertFileToUrl, getFileType } from "@/lib/utils";
+import {  convertFileToUrl, getFileType } from "@/lib/utils";
 import Image from "next/image";
 import Thumbnail from "@/components/Thumbnail";
 import { MAX_FILE_SIZE } from "@/constants";

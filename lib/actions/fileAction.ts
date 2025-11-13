@@ -27,7 +27,7 @@ export const uploadFile = async ({
     const bucketFile = await storage.createFile(
       appwriteConfig.bucketId,
       ID.unique(),
-      inputFile,
+      inputFile
     );
 
     const fileDocument = {
@@ -47,7 +47,7 @@ export const uploadFile = async ({
         appwriteConfig.databaseId,
         appwriteConfig.filesCollectionId,
         ID.unique(),
-        fileDocument,
+        fileDocument
       )
       .catch(async (error: unknown) => {
         await storage.deleteFile(appwriteConfig.bucketId, bucketFile.$id);
@@ -66,7 +66,7 @@ const createQueries = (
   types: string[],
   searchText: string,
   sort: string,
-  limit?: number,
+  limit?: number
 ) => {
   const queries = [
     Query.or([
@@ -83,7 +83,7 @@ const createQueries = (
     const [sortBy, orderBy] = sort.split("-");
 
     queries.push(
-      orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy),
+      orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy)
     );
   }
 
@@ -108,10 +108,10 @@ export const getFiles = async ({
     const files = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
-      queries,
+      queries
     );
 
-    console.log({ files });
+    // console.log({ files });
     return parseStringify(files);
   } catch (error) {
     handleError(error, "Failed to get files");
@@ -134,7 +134,7 @@ export const renameFile = async ({
       fileId,
       {
         name: newName,
-      },
+      }
     );
 
     revalidatePath(path);
@@ -142,6 +142,34 @@ export const renameFile = async ({
   } catch (error) {
     handleError(error, "Failed to rename file");
   }
+};
+
+export const Permission = async ({
+  fileId,
+  path,
+  canShareInstead,
+}: {
+  fileId: string;
+  path: string;
+  canShareInstead: boolean;
+}) => {
+  const { databases } = await createAdminClient();
+  try {
+    const updatedFile = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId,
+      {
+        share: canShareInstead,
+      }
+    );
+    console.log(updatedFile);
+    revalidatePath(path);
+    return parseStringify(updatedFile);
+  } catch (error) {
+    handleError(error, "Failed to make the file shareable");
+  }
+  //return isShare
 };
 
 export const updateFileUsers = async ({
@@ -152,13 +180,27 @@ export const updateFileUsers = async ({
   const { databases } = await createAdminClient();
 
   try {
+    const file = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      fileId
+    );
+    const data = parseStringify(file);
+
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not authenticated");
+    const isOwner = data.owner?.accountId === currentUser.accountId;
+    const isShareable = data.share === true;
+    if (!isOwner && !isShareable) {
+      throw new Error("You are not allowed to share this file.");
+    }
     const updatedFile = await databases.updateDocument(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       fileId,
       {
         users: emails,
-      },
+      }
     );
 
     revalidatePath(path);
@@ -179,7 +221,7 @@ export const deleteFile = async ({
     const deletedFile = await databases.deleteDocument(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
-      fileId,
+      fileId
     );
 
     if (deletedFile) {
@@ -203,7 +245,7 @@ export async function getTotalSpaceUsed() {
     const files = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
-      [Query.equal("owner", [currentUser.$id])],
+      [Query.equal("owner", [currentUser.$id])]
     );
 
     const totalSpace = {

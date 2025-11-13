@@ -56,6 +56,7 @@ export const ShareInput = ({ file, onInputChange, onRemove }: Props) => {
         <Input
           type="email"
           placeholder="Enter email address"
+          required
           onChange={(e) => onInputChange(e.target.value.trim().split(","))}
           className=" text-[14px] leading-[20px] font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 h-[52px] w-full rounded-full border px-4 shadow-[0px_10px_30px_0px_rgba(66,71,97,0.1)] "
         />
